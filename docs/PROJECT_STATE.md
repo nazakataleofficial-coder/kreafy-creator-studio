@@ -24,3 +24,12 @@ Save and review documentation and design references only. No development until o
 - Validate engine performance on low-end 8 GB Windows system.
 - Audit licenses, API terms and release architecture.
 - Freeze measurable phase-1 scope and golden test fixtures.
+
+
+## UI package baseline — 2026-10-31
+- Owner requested to finalize the 184-screen UI review baseline and save studio-by-studio clickable GitHub galleries.
+- Implemented in `ui/README.md`: 11 galleries, 184 named PNG screenshots and corresponding HTML prototype source files.
+- All 11 folders provide clickable PNG previews, contact sheets, `ALL_SCREENS.md`, and `UI_INTERACTION_SPEC.md`.
+- Link audit: 953 relative Markdown links in the 11 studio READMEs; all targets exist in tracked repository tree.
+- Reference pack is visual/design-only, NOT production-ready app code. Original competitor recordings / comprehensive video frame review and selected approved full-res originals remain a separate backlog.
+- Next phase: owner manual screen-by-screen UX review, then phase-0 feasibility and implementation authorization. No coding approved as part of this commit.
