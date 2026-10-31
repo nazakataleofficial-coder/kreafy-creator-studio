@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900">
+<defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="#08111e"/><stop offset="1" stop-color="#12192b"/></linearGradient><linearGradient id="hero"><stop stop-color="#172c51"/><stop offset="1" stop-color="#3b1d61"/></linearGradient></defs>
+<rect width="1440" height="900" fill="url(#bg)"/><rect x="0" y="0" width="230" height="900" fill="#0c1626"/>
+<text x="24" y="47" fill="#e5b86d" font-size="26" font-family="Arial" font-weight="bold">KREAFY</text><text x="24" y="68" fill="#fff" font-size="12" font-family="Arial">CREATOR STUDIO</text>
+<g font-family="Arial" font-size="17" fill="#dce6f5"><rect x="12" y="104" width="204" height="47" rx="9" fill="#d7ab55"/><text x="27" y="135" fill="#131a28" font-weight="bold">Dashboard</text><text x="27" y="191">Projects</text><text x="27" y="242">All Tools</text><text x="27" y="293">Media Library</text><text x="27" y="344">Templates</text><text x="27" y="395">Settings</text></g>
+<rect x="250" y="16" width="790" height="45" rx="10" fill="#1a293e"/><text x="272" y="45" fill="#acbbce" font-family="Arial" font-size="16">Search tools, projects, templates...</text>
+<rect x="1160" y="16" width="250" height="45" rx="10" fill="#d8b46b"/><text x="1205" y="45" fill="#172031" font-family="Arial" font-size="16" font-weight="bold">+ Quick Create</text>
+<rect x="252" y="80" width="1158" height="142" rx="16" fill="url(#hero)"/><text x="285" y="132" fill="white" font-family="Arial" font-size="32" font-weight="bold">Welcome to Kreafy Creator Studio</text><text x="285" y="169" fill="#d1ddf1" font-family="Arial" font-size="17">All-in-one professional AI video production · local-first</text>
+<text x="254" y="261" fill="#fff" font-size="23" font-family="Arial" font-weight="bold">AI Production Studios</text>
+<g font-family="Arial" font-size="19" font-weight="bold" fill="white">
+<rect x="252" y="282" width="375" height="115" rx="14" fill="#066a6d"/><text x="272" y="326">VoiceForge Studio</text><text x="272" y="357" font-size="13" font-weight="normal">Transcription · TTS · Dubbing</text>
+<rect x="641" y="282" width="375" height="115" rx="14" fill="#5f1bac"/><text x="661" y="326">StoryCraft Studio</text><text x="661" y="357" font-size="13" font-weight="normal">Research · Scripts · Prompts</text>
+<rect x="1030" y="282" width="380" height="115" rx="14" fill="#145bd0"/><text x="1050" y="326">VisualForge Studio</text><text x="1050" y="357" font-size="13" font-weight="normal">Batch Images · Consistency</text>
+<rect x="252" y="409" width="375" height="115" rx="14" fill="#bb263e"/><text x="272" y="453">CineCut Editor</text><text x="272" y="484" font-size="13" font-weight="normal">Timeline · Captions · Effects</text>
+<rect x="641" y="409" width="375" height="115" rx="14" fill="#b35f18"/><text x="661" y="453">ClipForge AI</text><text x="661" y="484" font-size="13" font-weight="normal">Auto Clips · Smart Reframing</text>
+<rect x="1030" y="409" width="380" height="115" rx="14" fill="#712cb9"/><text x="1050" y="453">Documentary Director</text><text x="1050" y="484" font-size="13" font-weight="normal">Topic → Finished Video</text>
+<rect x="252" y="536" width="375" height="115" rx="14" fill="#b52684"/><text x="272" y="580">Motion Studio</text><text x="272" y="611" font-size="13" font-weight="normal">Animation · Image to Video</text>
+<rect x="641" y="536" width="375" height="115" rx="14" fill="#286928"/><text x="661" y="580">Asset Vault</text><text x="661" y="611" font-size="13" font-weight="normal">Media · References · Brand Kits</text>
+<rect x="1030" y="536" width="380" height="115" rx="14" fill="#a36f14"/><text x="1050" y="580">Render Studio</text><text x="1050" y="611" font-size="13" font-weight="normal">Export · Queue · Quality Checks</text>
+</g>
+<text x="254" y="691" fill="white" font-size="22" font-family="Arial" font-weight="bold">Quick Tools</text><g font-family="Arial" font-size="15" fill="white">
+<rect x="252" y="710" width="181" height="68" rx="10" fill="#18273e"/><text x="268" y="749">Transcribe</text>
+<rect x="447" y="710" width="181" height="68" rx="10" fill="#18273e"/><text x="463" y="749">Text to Speech</text>
+<rect x="642" y="710" width="181" height="68" rx="10" fill="#18273e"/><text x="658" y="749">Generate Images</text>
+<rect x="837" y="710" width="181" height="68" rx="10" fill="#18273e"/><text x="853" y="749">Auto Captions</text>
+<rect x="1032" y="710" width="181" height="68" rx="10" fill="#18273e"/><text x="1048" y="749">AI Clipper</text>
+<rect x="1227" y="710" width="183" height="68" rx="10" fill="#18273e"/><text x="1243" y="749">Video Generator</text></g>
+<rect x="252" y="802" width="560" height="70" rx="11" fill="#172337"/><rect x="828" y="802" width="582" height="70" rx="11" fill="#172337"/>
+<text x="271" y="843" fill="#fff" font-family="Arial" font-size="19">Recent Projects</text><text x="850" y="843" fill="#fff" font-family="Arial" font-size="19">Active Jobs · Notifications · System Status</text>
+</svg>
