@@ -1,0 +1,1 @@
+Verified 184 named screens, 184 PNG outputs, 11 folders. Master ZIP CRC verified. UI only. No GitHub changes.
