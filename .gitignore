@@ -1,0 +1,18 @@
+# Local project data and secrets
+.env
+.env.*
+!.env.example
+data/
+output/
+tmp/
+cache/
+models/
+*.sqlite
+*.sqlite3
+__pycache__/
+.venv/
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
