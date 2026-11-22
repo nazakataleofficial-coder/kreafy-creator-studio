@@ -1,0 +1,14 @@
+# Studio runtime artefacts — never committed.
+studio.db
+studio.db-journal
+data/
+__pycache__/
+*.pyc
+.venv/
+venv/
+node_modules/
+dist/
+.launcher.pid
+logs/
+backups/
+.DS_Store

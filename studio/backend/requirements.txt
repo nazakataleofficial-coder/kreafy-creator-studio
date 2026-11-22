@@ -1,0 +1,28 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+python-multipart>=0.0.9
+# Pillow renders the StickMan stick-figure frames (Phase 7 slice 1).
+# It is imported lazily in the frame endpoint, so the app still starts
+# without it — the endpoint then returns a plain 503 telling the user
+# to run: pip install pillow
+pillow>=10.0
+# edge-tts (free Microsoft TTS, no key) — v0.14.1 se REQUIRED hai:
+# VoiceForge samples + TTS isi se chalte hain. Pehle ye list me
+# nahi tha (jaan-boojh kar optional rakha gaya tha), to fresh PC
+# par har voice play 503 deta tha. TTS endpoint phir bhi lazy
+# import karta hai aur missing/blocked par plain 503 deta hai, taake
+# app kabhi is par depend karke crash na ho.
+edge-tts>=6.1
+# faster-whisper is OPTIONAL too (free offline transcription, no key,
+# no model download — only cached models are used). The transcription
+# worker imports it lazily and the job fails with a plain message when
+# it is missing, so the app still starts without it.
+# To try it on your PC: pip install faster-whisper
+faster-whisper>=1.0
+# Playwright drives the Gemini Canvas provider (free images via
+# gemini.google.com on the user's own Google login + Gemini Pro
+# quota). The provider imports it lazily and the Canvas status
+# endpoint says plainly when it is missing, so the app still starts
+# without it. After installing, the Chromium browser is a separate
+# one-time step: python -m playwright install chromium
+playwright>=1.40
