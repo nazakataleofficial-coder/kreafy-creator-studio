@@ -1,5 +1,26 @@
 # Changelog — Kreafy Creator Studio
 
+## v0.15.0 — Slice 6: Watermark Cleaner (2026-11-22)
+
+Gemini sparkle corner badge remover (Flow / Nano Banana images) — free,
+local, no API. Upload images, auto-detect the corner badge, clean it
+(reverse-blend + Telea inpaint), manual paint for leftovers, ZIP download.
+
+- **Backend** (`/api/watermark/*`): upload (max 20 files, <= 20 MB each,
+  detect on upload), clean (4-at-a-time, per-image clean %), manual
+  strokes (painted mask re-clean), job list + get, cleaned images ZIP.
+  OpenCV is optional — endpoints return an honest 503 in plain Roman
+  Urdu when it is missing; the app still starts without it
+  (`opencv-python-headless>=4.8` in requirements.txt, lazy import).
+- **Frontend**: new Watermark Cleaner tool — drag & drop + file picker,
+  per-image before/after toggle, badge status in plain words, intensity
+  slider 0.5–2.0, manual paint canvas on the after image + Re-run,
+  Download ZIP, recent jobs. Project-independent: opens without a
+  project pick. Dashboard card + sidebar + All Tools menu.
+- **Verified**: detection 9/9 synthetic badges, 0 false positives on
+  9 badge-free real Flow images, mean clean ~91% (white-box test 0
+  failures); end-to-end curl + Playwright UI audit + fresh-unzip boot.
+
 ## v0.14.1 — Bugfix release (2026-11-22)
 
 First real Windows PC test (Ali, 2026-11-22) found 4 issues; all fixed

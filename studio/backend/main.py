@@ -48,7 +48,9 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13489,7 +13491,7 @@ def health() -> dict:
         "status": "ok",
         "service": "kreafy-creator-studio",
         "version": APP_VERSION,
-        "phase": "flow-hardening",
+        "phase": "watermark-cleaner",
         "database": "sqlite",
         "ffmpeg": ffmpeg_info(),
     }
@@ -17549,6 +17551,338 @@ def pollinations_test(body: PollinationsIn) -> dict:
         "url": f"/files/pollinations-test/{name}",
         "bytes": len(data),
     }
+
+
+# --- Slice 6: Watermark Cleaner -------------------------------------------
+# Gemini sparkle corner badge remover (Flow / Nano Banana images).
+# Pure module studio/backend/watermark_cleaner.py karta hai kaam:
+# detect_badge (locate) + clean_image (reverse-blend + inpaint).
+# Module numpy + PIL top par import karta hai — numpy opencv ke saath
+# aata hai, is liye opencv na ho to module import bhi fail ho sakta
+# hai. Is liye yahan LAZY import hai, har endpoint ke andar
+# (try/except ImportError -> honest 503), main.py ke top par kabhi
+# nahi — app opencv ke baghair bhi start hoti hai.
+# Jobs studio/data/watermark/<uuid>/ me hain (gitignored, ZIP me
+# kabhi nahi jate) + job.json. /files/ mount DATA_DIR serve karta
+# hai; orig/cleaned URLs relative paths hain (watermark/<job>/<file>)
+# — frontend ka fileUrl() un par /files/ lagata hai (assets wali
+# convention), warna URL double ho jata hai.
+
+WM_DIR = DATA_DIR / "watermark"
+WM_MAX_FILES = 20
+WM_MAX_BYTES = 20 * 1024 * 1024
+_WM_ID_RE = re.compile(r"^[0-9a-f-]{8,64}$")
+_WM_OPENCV_MSG = (
+    "OpenCV install nahi hai — Watermark Cleaner ke liye Setup se "
+    "opencv-python-headless install karein, ya: pip install "
+    "opencv-python-headless"
+)
+
+
+def _wm_require_cv2():
+    """watermark_cleaner lazily load karein; na mile to honest 503."""
+    try:
+        import watermark_cleaner as wc
+    except ImportError:
+        raise HTTPException(status_code=503, detail=_WM_OPENCV_MSG)
+    if not wc.opencv_available():
+        raise HTTPException(status_code=503, detail=_WM_OPENCV_MSG)
+    return wc
+
+
+def _wm_job_dir(job_id: str) -> Path:
+    if not _WM_ID_RE.match(job_id or ""):
+        raise HTTPException(status_code=404, detail="watermark job nahi mila")
+    return WM_DIR / job_id
+
+
+def _wm_load_job(job_id: str) -> dict:
+    folder = _wm_job_dir(job_id)
+    job_file = folder / "job.json"
+    if not job_file.is_file():
+        raise HTTPException(status_code=404, detail="watermark job nahi mila")
+    try:
+        return json.loads(job_file.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise HTTPException(
+            status_code=500, detail="watermark job read nahi ho saka"
+        )
+
+
+def _wm_save_job(job: dict) -> None:
+    folder = _wm_job_dir(job["id"])
+    folder.mkdir(parents=True, exist_ok=True)
+    (folder / "job.json").write_text(
+        json.dumps(job, indent=2), encoding="utf-8"
+    )
+
+
+def _wm_clamp_intensity(value) -> float:
+    try:
+        v = float(value if value is not None else 1.0)
+    except (TypeError, ValueError):
+        v = 1.0
+    return max(0.5, min(2.0, v))
+
+
+def _wm_badge_summary(badge: dict | None) -> dict | None:
+    """detect_badge ka result job.json ke liye (mask numpy array hai —
+    JSON me nahi ja sakta, is liye sirf plain fields)."""
+    if not badge:
+        return None
+    return {
+        "found": True,
+        "corner": badge["corner"],
+        "bbox": [int(v) for v in badge["bbox"]],
+    }
+
+
+class WmCleanIn(BaseModel):
+    intensity: float | None = 1.0
+
+
+class WmStroke(BaseModel):
+    x: float = 0.0
+    y: float = 0.0
+    r: float = 0.02
+
+
+class WmManualIn(BaseModel):
+    image: str = ""
+    strokes: list[WmStroke] = []
+    intensity: float | None = 1.0
+
+
+@app.post("/api/watermark/upload", status_code=201)
+async def watermark_upload(files: list[UploadFile] = File(...)) -> dict:
+    """Tasveerein upload karein (max 20, har ek <= 20 MB, png/jpg/webp)
+    — upload par hi har image par detect_badge chalta hai."""
+    wc = _wm_require_cv2()
+    if not files:
+        raise HTTPException(
+            status_code=400, detail="koi tasveer nahi di — png, jpg ya webp dein"
+        )
+    if len(files) > WM_MAX_FILES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"ek dafa me max {WM_MAX_FILES} tasveerein dein",
+        )
+    job_id = uuid.uuid4().hex
+    folder = WM_DIR / job_id
+    folder.mkdir(parents=True, exist_ok=True)
+    images: list[dict] = []
+    skipped: list[str] = []
+    for f in files:
+        fname = safe_filename(f.filename or "unnamed")
+        ext = Path(fname).suffix.lower()
+        if ext not in IMAGE_EXTS:
+            skipped.append(f"{fname}: tasveer nahi hai — png, jpg ya webp dein")
+            continue
+        data = await f.read()
+        if len(data) > WM_MAX_BYTES:
+            skipped.append(f"{fname}: 20 MB se bari hai — chhoti file dein")
+            continue
+        name = f"{int(time.time())}_{fname}"
+        (folder / name).write_bytes(data)
+        badge = None
+        try:
+            arr = wc.load_image(data)
+            badge = _wm_badge_summary(wc.detect_badge(arr))
+        except Exception:
+            # Detection fail ho to upload fail nahi hota — badge
+            # unknown rehta hai, Clean par dobara try hota hai.
+            badge = None
+        images.append(
+            {
+                "name": name,
+                "orig_url": f"watermark/{job_id}/{name}",
+                "badge": badge,
+                "cleaned_url": None,
+                "report": None,
+            }
+        )
+    if not images:
+        shutil.rmtree(folder, ignore_errors=True)
+        detail = (
+            "koi tasveer save nahi hui — " + "; ".join(skipped)
+            if skipped
+            else "koi tasveer save nahi hui — png, jpg ya webp file dein"
+        )
+        raise HTTPException(status_code=400, detail=detail)
+    job = {
+        "id": job_id,
+        "created": utcnow(),
+        "status": "uploaded",
+        "intensity": 1.0,
+        "images": images,
+        "summary": None,
+        "skipped": skipped,
+    }
+    _wm_save_job(job)
+    return job
+
+
+def _wm_clean_one(args):
+    """Ek image clean karein — ThreadPoolExecutor(4) ke liye worker.
+    (wc, folder, image, intensity) -> updated image entry."""
+    wc, folder, image, intensity = args
+    orig_path = folder / image["name"]
+    data = orig_path.read_bytes()
+    arr = wc.load_image(data)
+    cleaned, report = wc.clean_image(arr, intensity=intensity)
+    ext = Path(image["name"]).suffix.lower() or ".png"
+    clean_name = f"cleaned_{image['name']}"
+    if report.get("found"):
+        (folder / clean_name).write_bytes(
+            wc.save_image(cleaned, ext.lstrip("."))
+        )
+    else:
+        # Koi badge nahi — cleaned file original ki copy hai.
+        (folder / clean_name).write_bytes(data)
+    image["cleaned_url"] = f"watermark/{_wm_job_id(folder)}/{clean_name}"
+    image["report"] = report
+    return image
+
+
+def _wm_job_id(folder: Path) -> str:
+    return folder.name
+
+
+@app.post("/api/watermark/{job_id}/clean")
+def watermark_clean(job_id: str, body: WmCleanIn) -> dict:
+    """Job ki saari images clean karein — 4-at-a-time."""
+    wc = _wm_require_cv2()
+    job = _wm_load_job(job_id)
+    intensity = _wm_clamp_intensity(body.intensity)
+    folder = _wm_job_dir(job_id)
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        job["images"] = list(
+            pool.map(
+                _wm_clean_one,
+                [(wc, folder, img, intensity) for img in job["images"]],
+            )
+        )
+    with_badge = sum(
+        1 for img in job["images"] if (img.get("report") or {}).get("found")
+    )
+    clean_ge_90 = sum(
+        1
+        for img in job["images"]
+        if (img.get("report") or {}).get("found")
+        and (img["report"].get("clean_pct") or 0) >= 90
+    )
+    remaining = sum(
+        1
+        for img in job["images"]
+        if (img.get("report") or {}).get("found")
+        and (img["report"].get("clean_pct") or 0) < 90
+    )
+    job["intensity"] = intensity
+    job["status"] = "done"
+    job["summary"] = {
+        "total": len(job["images"]),
+        "with_badge": with_badge,
+        "clean_ge_90": clean_ge_90,
+        "remaining": remaining,
+    }
+    _wm_save_job(job)
+    return job
+
+
+@app.post("/api/watermark/{job_id}/manual")
+def watermark_manual(job_id: str, body: WmManualIn) -> dict:
+    """Ek image par haath se paint kiye strokes se dobara clean karein.
+    Cleaned version ho to usi par, warna original par."""
+    wc = _wm_require_cv2()
+    job = _wm_load_job(job_id)
+    name = (body.image or "").strip()
+    image = next((i for i in job["images"] if i["name"] == name), None)
+    if image is None:
+        raise HTTPException(
+            status_code=404, detail="ye tasveer is job me nahi hai"
+        )
+    if not body.strokes:
+        raise HTTPException(
+            status_code=400,
+            detail="pehle tasveer par paint karein — koi stroke nahi mila",
+        )
+    intensity = _wm_clamp_intensity(body.intensity)
+    folder = _wm_job_dir(job_id)
+    clean_name = f"cleaned_{image['name']}"
+    src = folder / clean_name
+    if not src.is_file():
+        src = folder / image["name"]
+    arr = wc.load_image(src.read_bytes())
+    h, w = arr.shape[:2]
+    mask = wc.strokes_to_mask(
+        w,
+        h,
+        [{"x": s.x, "y": s.y, "r": s.r} for s in body.strokes],
+        intensity,
+    )
+    cleaned, report = wc.clean_image(arr, intensity=intensity, extra_mask=mask)
+    ext = Path(image["name"]).suffix.lower() or ".png"
+    if report.get("found") or report.get("manual"):
+        (folder / clean_name).write_bytes(
+            wc.save_image(cleaned, ext.lstrip("."))
+        )
+        image["cleaned_url"] = f"watermark/{job_id}/{clean_name}"
+    image["report"] = report
+    job["intensity"] = intensity
+    _wm_save_job(job)
+    return image
+
+
+@app.get("/api/watermark/jobs")
+def watermark_list_jobs() -> list:
+    """Saare watermark jobs — newest pehle."""
+    if not WM_DIR.is_dir():
+        return []
+    jobs: list[dict] = []
+    for folder in WM_DIR.iterdir():
+        if not folder.is_dir():
+            continue
+        job_file = folder / "job.json"
+        if not job_file.is_file():
+            continue
+        try:
+            jobs.append(json.loads(job_file.read_text(encoding="utf-8")))
+        except (OSError, ValueError):
+            continue
+    jobs.sort(key=lambda j: j.get("created", ""), reverse=True)
+    return jobs
+
+
+@app.get("/api/watermark/{job_id}")
+def watermark_get_job(job_id: str) -> dict:
+    return _wm_load_job(job_id)
+
+
+@app.get("/api/watermark/{job_id}/images.zip")
+def watermark_download_zip(job_id: str) -> StreamingResponse:
+    """Job ki saari cleaned images ek ZIP me (cleaned na ho to
+    original)."""
+    job = _wm_load_job(job_id)
+    folder = _wm_job_dir(job_id)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for img in job["images"]:
+            clean_name = f"cleaned_{img['name']}"
+            path = folder / clean_name
+            if not path.is_file():
+                path = folder / img["name"]
+            if path.is_file():
+                zf.writestr(path.name, path.read_bytes())
+    buf.seek(0)
+    return StreamingResponse(
+        buf,
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                f'attachment; filename="watermark-cleaned-{job_id[:8]}.zip"'
+            )
+        },
+    )
 
 
 # --- Prebuilt frontend (production mode) -----------------------------------

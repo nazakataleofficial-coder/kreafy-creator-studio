@@ -2049,4 +2049,82 @@ export const api = {
     request<YoutubeMetadata>(`/projects/${projectId}/metadata/generate`, {
       method: "POST",
     }),
+  // --- Slice 6: Watermark Cleaner ---------------------------------------
+  watermarkUpload: (form: FormData) =>
+    upload<WatermarkJob>("/watermark/upload", form),
+  watermarkClean: (jobId: string, intensity: number) =>
+    request<WatermarkJob>(`/watermark/${jobId}/clean`, {
+      method: "POST",
+      body: JSON.stringify({ intensity }),
+    }),
+  watermarkManual: (
+    jobId: string,
+    body: { image: string; strokes: WatermarkStroke[]; intensity: number },
+  ) =>
+    request<WatermarkImage>(`/watermark/${jobId}/manual`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  watermarkJob: (jobId: string) =>
+    request<WatermarkJob>(`/watermark/${jobId}`),
+  watermarkJobs: () => request<WatermarkJob[]>("/watermark/jobs"),
+  watermarkZipUrl: (jobId: string) => `${API_BASE}/watermark/${jobId}/images.zip`,
+};
+
+/** Slice 6: Watermark Cleaner — backend job.json ka shape. */
+export interface WatermarkBadge {
+  found: boolean;
+  corner: string;
+  bbox: [number, number, number, number];
+}
+
+export interface WatermarkReport {
+  found: boolean;
+  manual: boolean;
+  corner: string | null;
+  bbox: [number, number, number, number] | null;
+  pixels: number;
+  clean_pct: number;
+  contrast_before: number;
+  contrast_after: number;
+  note: string | null;
+}
+
+export interface WatermarkImage {
+  name: string;
+  orig_url: string;
+  badge: WatermarkBadge | null;
+  cleaned_url: string | null;
+  report: WatermarkReport | null;
+}
+
+export interface WatermarkSummary {
+  total: number;
+  with_badge: number;
+  clean_ge_90: number;
+  remaining: number;
+}
+
+export interface WatermarkJob {
+  id: string;
+  created: string;
+  status: string;
+  intensity: number;
+  images: WatermarkImage[];
+  summary: WatermarkSummary | null;
+  skipped: string[];
+}
+
+export interface WatermarkStroke {
+  x: number;
+  y: number;
+  r: number;
+}
+
+/** Corner code -> plain words (Roman Urdu). */
+export const WATERMARK_CORNER_LABEL: Record<string, string> = {
+  br: "bottom-right",
+  bl: "bottom-left",
+  tr: "top-right",
+  tl: "top-left",
 };

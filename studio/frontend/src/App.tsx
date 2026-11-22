@@ -67,6 +67,7 @@ import {
   type VoiceProvider,
   type WhisperStatus,
 } from "./api";
+import WatermarkCleanerView from "./WatermarkCleanerView";
 
 type Page =
   | "Dashboard"
@@ -100,6 +101,7 @@ const TOOLS: { name: string; description: string; status: string; color: string;
   { name: "Asset Vault", description: "Media library, brand kits, character references.", status: "Phase 1 — asset records live", color: "#286928", subtitle: "Media · References · Brand Kits" },
   { name: "Render Studio", description: "FFmpeg export queue and quality checks.", status: "Phase 7 — motion presets + asset tags + render queue live", color: "#a36f14", subtitle: "Export · Queue · Quality Checks" },
   { name: "Master Prompt Library", description: "Viral-short master prompts — copy ya script me lagayen.", status: "StoryCraft library — alag page", color: "#c9a6ff", subtitle: "Prompts · Reverse-engineer" },
+  { name: "Watermark Cleaner", description: "Gemini / Flow images ka corner sparkle badge saaf karein.", status: "Slice 6 — detect + clean + manual paint live", color: "#2f8f5b", subtitle: "Badge hatayen · ZIP download" },
 ];
 
 // Caption styles the backend can really burn in (cross-check slice):
@@ -154,6 +156,7 @@ const STUDIO_NAV: { name: string; color: string }[] = [
   { name: "VisualForge", color: "#4a9dff" },
   { name: "StoryCraft", color: "#b58bff" },
   { name: "Master Prompt Library", color: "#c9a6ff" },
+  { name: "Watermark Cleaner", color: "#4ed79a" },
   { name: "Motion Studio", color: "#f080ce" },
   { name: "Asset Vault", color: "#4ed79a" },
   { name: "Render Studio", color: "#efc568" },
@@ -174,6 +177,7 @@ const STUDIO_GRID_ORDER = [
   "Motion Studio",
   "Asset Vault",
   "Render Studio",
+  "Watermark Cleaner",
 ];
 
 const QUICK_TOOLS: { name: string; note: string; target: string }[] = [
@@ -212,6 +216,7 @@ const TOOL_SECTIONS: Record<string, string> = {
   "Motion Studio": "motion",
   "Render Studio": "render",
   "Master Prompt Library": "master-prompts",
+  "Watermark Cleaner": "watermark-cleaner",
 };
 
 type StageState = "done" | "running" | "failed" | "todo" | "planned";
@@ -3200,6 +3205,7 @@ function CineCut({
             ["Motion Studio", "motion"],
             ["Render Studio", "render"],
             ["Master Prompts", "master-prompts"],
+            ["Watermark Cleaner", "watermark-cleaner"],
           ] as [string, string][]
         ).map(([label, id]) => (
           <button
@@ -6324,6 +6330,9 @@ function CineCut({
 
         </>
       )}
+      {activeTool === "watermark-cleaner" && (
+        <WatermarkCleanerView onBack={() => onActiveTool("cinecut-top")} />
+      )}
       {activeTool === "director" && (
         <>
       <h2>Magic Mode — Topic se tayyar video</h2>
@@ -7345,6 +7354,11 @@ export default function App() {
   // CineCut view: a project id opens that project's timeline, "pick"
   // opens the project picker, null means the normal 6 pages.
   const [cineCut, setCineCut] = useState<number | "pick" | null>(null);
+  // Slice 6 — Watermark Cleaner project-independent hai: Dashboard /
+  // sidebar / All Tools se khulta hai BINA project pick ke (Master
+  // Prompt Library ki tarah alag view, lekin us se bhi seedha —
+  // picker bilkul nahi).
+  const [watermarkOpen, setWatermarkOpen] = useState(false);
   // v0.14.1 (Issue 3 fix): har tool ka apna section hai CineCut ke
   // project view ke andar — Dashboard / sidebar / All Tools se tool
   // kholne par pehle project picker khulta hai, phir project chunte
@@ -7361,6 +7375,15 @@ export default function App() {
       setPage("Media Library");
       return;
     }
+    if (name === "Watermark Cleaner") {
+      // Project-independent: picker nahi, seedha tool khulta hai.
+      setWatermarkOpen(true);
+      setToolTarget(null);
+      setActiveTool("watermark-cleaner");
+      setCineCut(null);
+      return;
+    }
+    setWatermarkOpen(false);
     setToolTarget(TOOL_SECTIONS[name] ?? null);
     setActiveTool(TOOL_SECTIONS[name] ?? "cinecut-top");
     setCineCut("pick");
@@ -7857,6 +7880,7 @@ export default function App() {
               className={page === p && cineCut === null ? "nav-item active" : "nav-item"}
               onClick={() => {
                 setCineCut(null);
+                setWatermarkOpen(false);
                 setPage(p);
               }}
             >
@@ -7924,7 +7948,15 @@ export default function App() {
             ＋ New Project
           </button>
         </div>
-        {cineCut !== null ? (
+        {watermarkOpen ? (
+          <WatermarkCleanerView
+            onBack={() => {
+              setWatermarkOpen(false);
+              setActiveTool("cinecut-top");
+              setPage("All Tools");
+            }}
+          />
+        ) : cineCut !== null ? (
           <CineCut
             project={cineCutProject}
             projects={projects.data ?? []}
@@ -7932,6 +7964,7 @@ export default function App() {
             onBack={() => {
               setToolTarget(null);
               setActiveTool("cinecut-top");
+              setWatermarkOpen(false);
               setCineCut(null);
               setPage("All Tools");
             }}

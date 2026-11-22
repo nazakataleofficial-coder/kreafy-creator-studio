@@ -26,3 +26,9 @@ faster-whisper>=1.0
 # without it. After installing, the Chromium browser is a separate
 # one-time step: python -m playwright install chromium
 playwright>=1.40
+# opencv-python-headless is OPTIONAL (Slice 6 Watermark Cleaner:
+# corner-badge detect + Telea inpaint). watermark_cleaner imports
+# it lazily and the endpoints return a plain 503 when it is missing,
+# so the app still starts without it.
+# To try it on your PC: pip install opencv-python-headless
+opencv-python-headless>=4.8
